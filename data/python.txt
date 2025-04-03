@@ -1,0 +1,2 @@
+Python es un lenguaje de programación interpretado y de alto nivel.
+La inteligencia artificial se basa en modelos matemáticos y redes neuronales.
