@@ -1,16 +1,28 @@
-from sentence_transformers import SentenceTransformer
+import requests
 import pickle
 import os
 
-# Inicializar modelo
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# URL del servidor LM Studio para generar embeddings
+LMSTUDIO_EMBEDDING_URL = "http://127.0.0.1:1234/v1/embeddings"
 
 # Carpeta donde están los documentos
 DOCUMENTS_FOLDER = "data"
 EMBEDDINGS_FILE = "embeddings/documentos_embeddings.pkl"
 
+# Función para obtener embeddings desde LM Studio
+def get_embedding(text):
+    response = requests.post(
+        LMSTUDIO_EMBEDDING_URL,
+        json={"input": text, "model": "text-embedding-bge-m3"}  # Asegura que este modelo está cargado en LM Studio
+    )
+    if response.status_code == 200:
+        return response.json()["data"][0]["embedding"]
+    else:
+        print(f"❌ Error al obtener embedding: {response.text}")
+        return None
+
 # Función para dividir texto en fragmentos de un tamaño determinado
-def split_text(text, chunk_size=50):
+def split_text(text, chunk_size=300):
     words = text.split()
     return [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size)]
 
@@ -33,10 +45,14 @@ for filename in os.listdir(DOCUMENTS_FOLDER):
         chunks = split_text(content)
         
         # Generar embeddings para cada fragmento
-        chunk_embeddings = [model.encode(chunk).tolist() for chunk in chunks]
+        chunk_embeddings = []
+        for chunk in chunks:
+            embedding = get_embedding(chunk)
+            if embedding:
+                chunk_embeddings.append((chunk, embedding))
         
         # Guardar fragmentos y sus embeddings
-        document_embeddings[file_path] = list(zip(chunks, chunk_embeddings))
+        document_embeddings[file_path] = chunk_embeddings
 
 # Guardar embeddings en un archivo
 with open(EMBEDDINGS_FILE, "wb") as f:
